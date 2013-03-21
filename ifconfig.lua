@@ -12,6 +12,12 @@ local r, err		= resolver:new{
 						timeout = 2000,  -- 2 sec
 						}
 
+                        
+-- GeoIP Resolution
+-- 
+local geoip_city    = require 'geoip.city'
+local geodb         = geoip_city.open('./GeoLiteCity.dat')
+
 -- initiate GET handler
 --
 ngx.header.content_type = 'text/html';
@@ -41,7 +47,7 @@ end
 
 local function check4Compression()
     if headers['accept-encoding'] then
-        return '<img src="/img/static/compression.png" class="img-rounded" title="You are using HTTP Compression (' .. headers['accept-encoding'] .. ')" height=120 width=120 >'
+        return '<img src="/img/static/compression.png" class="img-rounded" title="You are using HTTP Compression ('..headers['accept-encoding']..')" height=120 width=120 >'
     else
         return 'You are NOT using HTTP compression'
     end
@@ -50,7 +56,7 @@ end
 local function check4Lang()
     if headers['accept-language'] then
         local lang = headers['accept-language']:sub(1,2) 
-        return '<img src="/img/static/' .. lang .. '.png" class="img-rounded" height=100 width=100 title="Your browser language is ' .. lang:upper() .. '">'
+        return '<img src="/img/static/'..lang..'.png" class="img-rounded" height=100 width=100 title="Your browser language is '..lang:upper()..'">'
     else
         return ''
     end
@@ -71,7 +77,7 @@ local function resolvPTR()
     end
 
     local reversed = remote_addr:gsub("(%d+).(%d+).(%d+).(%d+)", "%4.%3.%2.%1")
-    local ans, err = r:query(reversed .. '.in-addr.arpa', { qtype = r.TYPE_PTR })
+    local ans, err = r:query(reversed..'.in-addr.arpa', { qtype = r.TYPE_PTR })
     if not ans then
         ngx.say("failed to query: ", err)
         return
@@ -80,22 +86,48 @@ local function resolvPTR()
     end
 end
 
+local function getCity()
+    return  geodb:query_by_addr(remote_addr)["city"]
+end
+
+local function getCountryName()
+    return geodb:query_by_addr(remote_addr)["country_name"]
+end
+
+local function getCountryCode()
+    return geodb:query_by_addr(remote_addr)["country_code"]
+end
+
+local function getCountryCode3()
+    return geodb:query_by_addr(remote_addr)["country_code3"]
+end
 
 -- init HTML buffer write
 ngx.say('<html><head><meta charset="utf-8">\n<meta name="Googlebot" content="nofollow" />\n<meta http-equiv="content-Type" content="text/html; charset=utf-8" />\n<meta http-equiv="content-style-type" content="text/css" />\n<meta http-equiv="content-language" content="en" />\n<meta http-equiv="pragma" content="no-cache" />\n<meta http-equiv="cache-control" content="no-cache" />')
 ngx.say('<title>Where I Am</title>\n<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/2.1.1/css/bootstrap.min.css"> </head>\n<body>')
 ngx.say('<h1>Where I Am  :: Display Users Information</h1>')
-ngx.say('<center><h2>Your IP is ' .. remote_addr .. '</h2>')
-ngx.say('<div text:small>Reverse IP ', resolvPTR(), '</div>')
-ngx.say('<br><br><br>')
-ngx.say('<a href="" class="btn btn-small btn-primary disabled">Reload</a></center>')
-ngx.say('<br><br><br>')
+ngx.say('<br>')
+
+ngx.say('<div align="center"><table>')
+ngx.say('   <tr>')
+ngx.say('       <td style="text-align: center; "colspan="1" rowspan="2"><img src="/img/static/'..getCountryCode():lower()..'.png" class="img-rounded" title="You appear to be coming from '..getCountryName()..'" height="100" width="100"></td>')
+ngx.say('       <td style="vertical-align: top; text-align: center;"><h2>Your IP address is </h2></td>')
+ngx.say('   </tr>')
+ngx.say('   <tr>')
+ngx.say('       <td style="vertical-align: middle; text-align: center><div style="text-align: center;"> </div><h1 style="text-align: center;">'..remote_addr..'</h1></td>')
+ngx.say('   </tr>')
+ngx.say('   <tr>')
+ngx.say('       <td style="vertical-align: top; text-align: center; "><h3>'..getCity()..', '..getCountryName()..'</h3></td>')
+ngx.say('       <td style="vertical-align: top;text-align: center; width: 600px;"><small>Reverse IP '..resolvPTR()..'</small></td>')
+ngx.say('   </tr>')
+ngx.say('</table></div><br>')
+
 ngx.say('<div align=center><table><caption>Browser And Connection Features</caption>')
-ngx.say('<tr>')
-ngx.say('<td>' , check4DNT() , '</td>')
-ngx.say('<td>' , check4Proxy() , ' </td>')
-ngx.say('<td>' , check4Lang(), '</td>')
-ngx.say('<td>', check4Compression(), '</td>')
+ngx.say('   <tr>')
+ngx.say('   <td>' , check4DNT() , '</td>')
+ngx.say('   <td>' , check4Proxy() , ' </td>')
+ngx.say('   <td>' , check4Lang(), '</td>')
+ngx.say('   <td>', check4Compression(), '</td>')
 ngx.say('</tr>')
 ngx.say('</table></div>')
 ngx.say('<br><br><br>')
