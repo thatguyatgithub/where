@@ -1,7 +1,8 @@
 -- static definitions
 --
-local uri		   = ngx.var.uri
-local headers	   = ngx.req.get_headers()
+local uri           = ngx.var.uri
+local headers       = ngx.req.get_headers()
+local find          = string.find
 
 -- Reverse Resolution
 local remote_addr   = ngx.var.remote_addr
@@ -17,10 +18,6 @@ local r, err		= resolver:new{
 -- 
 local geoip_city    = require 'geoip.city'
 local geodb         = geoip_city.open('./GeoLiteCity.dat')
-
--- initiate GET handler
---
-ngx.header.content_type = 'text/html';
 
 -- Debug only
 ngx.header['Cache-Control'] = 'no-cache, must-revalidate, max-age=0'
@@ -79,7 +76,7 @@ local function resolvPTR()
     local reversed = remote_addr:gsub("(%d+).(%d+).(%d+).(%d+)", "%4.%3.%2.%1")
     local ans, err = r:query(reversed..'.in-addr.arpa', { qtype = r.TYPE_PTR })
     if not ans then
-        ngx.say("failed to query: ", err)
+        ngx.log(ngx.ERR, "failed to query: ", err)
         return
     else
         return ans[1].ptrdname
@@ -102,38 +99,82 @@ local function getCountryCode3()
     return geodb:query_by_addr(remote_addr)["country_code3"]
 end
 
--- init HTML buffer write
-ngx.say('<html><head><meta charset="utf-8">\n<meta name="Googlebot" content="nofollow" />\n<meta http-equiv="content-Type" content="text/html; charset=utf-8" />\n<meta http-equiv="content-style-type" content="text/css" />\n<meta http-equiv="content-language" content="en" />\n<meta http-equiv="pragma" content="no-cache" />\n<meta http-equiv="cache-control" content="no-cache" />')
-ngx.say('<title>Where I Am</title>\n<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/2.1.1/css/bootstrap.min.css"> </head>\n<body>')
-ngx.say('<h1>Where I Am  :: Display Users Information</h1>')
-ngx.say('<br>')
+if headers['user-agent']:find('curl') or
+   headers['user-agent']:find('Wget') then
+    -- Dump output in plain format 
+    ngx.header.content_type = 'text/plain';
 
-ngx.say('<div align="center"><table>')
-ngx.say('   <tr>')
-ngx.say('       <td style="text-align: center; "colspan="1" rowspan="2"><img src="/img/static/'..getCountryCode():lower()..'.png" class="img-rounded" title="You appear to be coming from '..getCountryName()..'" height="100" width="100"></td>')
-ngx.say('       <td style="vertical-align: top; text-align: center;"><h2>Your IP address is </h2></td>')
-ngx.say('   </tr>')
-ngx.say('   <tr>')
-ngx.say('       <td style="vertical-align: middle; text-align: center><div style="text-align: center;"> </div><h1 style="text-align: center;">'..remote_addr..'</h1></td>')
-ngx.say('   </tr>')
-ngx.say('   <tr>')
-ngx.say('       <td style="vertical-align: top; text-align: center; "><h3>'..getCity()..', '..getCountryName()..'</h3></td>')
-ngx.say('       <td style="vertical-align: top;text-align: center; width: 600px;"><small>Reverse IP '..resolvPTR()..'</small></td>')
-ngx.say('   </tr>')
-ngx.say('</table></div><br>')
+    -- URI resource could have a caching invalidator, use matching pattern instead 
+    if      uri:find('ip') then
+        ngx.say(remote_addr)
 
-ngx.say('<div align=center><table><caption>Browser And Connection Features</caption>')
-ngx.say('   <tr>')
-ngx.say('   <td>' , check4DNT() , '</td>')
-ngx.say('   <td>' , check4Proxy() , ' </td>')
-ngx.say('   <td>' , check4Lang(), '</td>')
-ngx.say('   <td>', check4Compression(), '</td>')
-ngx.say('</tr>')
-ngx.say('</table></div>')
-ngx.say('<br><br><br>')
-ngx.say('<table class="table table-condensed"><tr>Raw HTTP Information Starting Here</tr>')
-for k, v in pairs(headers) do
-		ngx.say('<tr><td><small>', k,': ', v, '</small></td></tr>')
+    elseif  uri:find('place') then
+        ngx.say(getCity()..', '..getCountryName())
+
+    elseif  uri:find('country') then
+        ngx.say(getCountryName())
+
+    elseif  uri:find('city') then
+        ngx.say(getCity())
+
+    elseif  uri:find('reverse') or
+            uri:find('ptr') then
+        ngx.say(resolvPTR())
+
+    else
+        ngx.say('Place: ' .. getCity()..', '..getCountryName())
+        ngx.say('IP: ' .. remote_addr)
+        ngx.say('Reverse IP: ' .. resolvPTR()..'\n')
+        ngx.say('>> Is this output too verbose? You just wanted to know your IP/Place/Country/City/Reverse IP!?')
+        ngx.say('$ curl where.im.org.ar/ip \n>> Or \n$ wget -q -O - where.im.org.ar/ip \n>> switch "ip" for "place", "country", "city" or "reverse" && win!')
+        ngx.say('\n/Powered by nginx :: "Where I Am?"/') 
+    end
+else
+
+    -- initiate GET handler
+    --
+    ngx.header.content_type = 'text/html';
+
+    -- init HTML buffer write
+    ngx.say('<html><head><meta charset="utf-8">\n<meta name="Googlebot" content="nofollow" />\n<meta http-equiv="content-Type" content="text/html; charset=utf-8" />\n<meta http-equiv="content-style-type" content="text/css" />\n<meta http-equiv="content-language" content="en" />\n<meta http-equiv="pragma" content="no-cache" />\n<meta http-equiv="cache-control" content="no-cache" />')
+    ngx.say('<title>Where I Am</title>\n<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/2.1.1/css/bootstrap.min.css"> </head>\n<body>')
+    ngx.say('<h1>Where I Am  :: Display Users Information</h1>')
+    ngx.say('<br>')
+
+    ngx.say('<div align="center"><table>')
+    ngx.say('   <tr>')
+    ngx.say('       <td style="text-align: center; "colspan="1" rowspan="2"><img src="/img/static/'..getCountryCode():lower()..'.png" class="img-rounded" title="You appear to be coming from '..getCountryName()..'" height="100" width="100"></td>')
+    ngx.say('       <td style="vertical-align: top; text-align: center;"><h2>Your IP address is </h2></td>')
+    ngx.say('   </tr>')
+    ngx.say('   <tr>')
+    ngx.say('       <td style="vertical-align: middle; text-align: center><div style="text-align: center;"> </div><h1 style="text-align: center;">'..remote_addr..'</h1></td>')
+    ngx.say('   </tr>')
+    ngx.say('   <tr>')
+    ngx.say('       <td style="vertical-align: top; text-align: center; "><h3>'..getCity()..', '..getCountryName()..'</h3></td>')
+    if resolvPTR() then
+        ngx.say('       <td style="vertical-align: top;text-align: center; width: 600px;"><small>Reverse IP '..resolvPTR()..'</small></td>')
+    end
+    ngx.say('   </tr>')
+    ngx.say('</table></div>')
+    ngx.say('<div align="center"><a href="" class="btn btn-small btn-primary disabled">Reload</a></div><br>')
+
+    ngx.say('<div align=center><table><caption>Browser And Connection Features</caption>')
+    ngx.say('   <tr>')
+    ngx.say('   <td>' , check4DNT() , '</td>')
+    ngx.say('   <td>' , check4Proxy() , ' </td>')
+    ngx.say('   <td>' , check4Lang(), '</td>')
+    ngx.say('   <td>', check4Compression(), '</td>')
+    ngx.say('</tr>')
+    ngx.say('</table></div>')
+    ngx.say('<br><br><br>')
+    ngx.say('<table class="table table-condensed"><tr>Raw HTTP Information Starting Here</tr>')
+    for k, v in pairs(headers) do
+            ngx.say('<tr><td><small>', k,': ', v, '</small></td></tr>')
+    end
+    ngx.say('</table>')
+    ngx.say('<div><blockquote>Is this output too verbose? You just wanted to know your IP/Place/Country/City/Reverse IP!?<br>')
+    ngx.say('$ curl where.im.org.ar/ip<br> Or <br>$ wget -q -O - where.im.org.ar/ip <br> switch "ip" for "place", "country", "city" or "reverse" && win!</blockquote></div>')
+
+    ngx.say('<blockquote class="pull-right"><a href="https://github.com/dererk/where">Powered by nginx :: Where I Am</a> is released under BSD license.')
+    ngx.say('<div align=right><em>Server Time ', os.date("%c",os.time()), '</em></blockquote>')
 end
-ngx.say('</table><div align=right><small><a href="https://github.com/dererk/where">Where I Am</a> is released under BSD license.</div>')
-ngx.say('<div align=right><em>Server Time ', os.date("%c",os.time()), '</em></small></div>')
