@@ -18,29 +18,32 @@ How to use it
 
 As any webservice, you can access it using any web browser. But for facility/scripting reasons, a curl/wget friendly interface is provided as explained below:
 
->  dererk@ravel:~$ curl where.im.org.ar
->  Place: Vancouver, Canada
->  IP: 206.12.19.5
->  Reverse IP: ravel.debian.org
->  
->  >> Is this output too verbose? You just wanted to know your IP/Place/Country/City/Reverse IP!?
->  $ curl where.im.org.ar/ip 
->  >> Or 
->  $ wget -q -O - where.im.org.ar/ip 
->  >> switch "ip" for "place", "country", "city" or "reverse" && win!
->  
->  /Powered by nginx :: "Where I Am?"/
->  dererk@ravel:~$ curl where.im.org.ar/ip
->  206.12.19.5
->  dererk@ravel:~$ curl where.im.org.ar/place
->  Vancouver, Canada
->  dererk@ravel:~$ curl where.im.org.ar/city
->  Vancouver
->  dererk@ravel:~$ curl where.im.org.ar/reverse
->  ravel.debian.org
->  dererk@ravel:~$ curl where.im.org.ar/country
->  Canada
->  dererk@ravel:~$ 
+
+
+      dererk@ravel:~$ curl where.im.org.ar
+      Place: Vancouver, Canada
+      IP: 206.12.19.5
+      Reverse IP: ravel.debian.org
+      
+      >> Is this output too verbose? You just wanted to know your IP/Place/Country/City/Reverse IP!?
+      $ curl where.im.org.ar/ip 
+      >> Or 
+      $ wget -q -O - where.im.org.ar/ip 
+      >> switch "ip" for "place", "country", "city" or "reverse" && win!
+      
+      /Powered by nginx :: "Where I Am?"/
+      dererk@ravel:~$ curl where.im.org.ar/ip
+      206.12.19.5
+      dererk@ravel:~$ curl where.im.org.ar/place
+      Vancouver, Canada
+      dererk@ravel:~$ curl where.im.org.ar/city
+      Vancouver
+      dererk@ravel:~$ curl where.im.org.ar/reverse
+      ravel.debian.org
+      dererk@ravel:~$ curl where.im.org.ar/country
+      Canada
+      dererk@ravel:~$ 
+
 
  
 Installation requirements
