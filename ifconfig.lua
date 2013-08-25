@@ -6,16 +6,16 @@ local find          = string.find
 
 -- Reverse Resolution
 local remote_addr   = ngx.var.remote_addr
-local dns			= require 'resolver'
-local r, err		= resolver:new{
-						nameservers = {"10.10.2.254"},
-						retrans = 2,  -- 5 retransmissions on receive timeout
-						timeout = 2000,  -- 2 sec
-						}
+local dns           = require 'resolver'
+local r, err        = resolver:new{
+    nameservers = {"10.10.2.254"},
+    retrans = 2,  -- 5 retransmissions on receive timeout
+    timeout = 2000,  -- 2 sec
+    }
 
-                        
+
 -- GeoIP Resolution
--- 
+--
 local geoip_city    = require 'geoip.city'
 local geodb         = geoip_city.open('./GeoLiteCity.dat')
 
@@ -36,9 +36,9 @@ end
 
 local function check4Proxy()
     if headers['via'] then
-        return '<img src="/img/static/proxy.jpg" class="img-rounded" title="You appear to be behind a proxy" height=150 width=150>' 
+        return '<img src="/img/static/proxy.jpg" class="img-rounded" title="You appear to be behind a proxy" height=150 width=150>'
     else
-        return '<img src="/img/static/direct-connection.jpg" class="img-rounded" title="You appear not to be behind a proxy" height=120 width=120>' 
+        return '<img src="/img/static/direct-connection.jpg" class="img-rounded" title="You appear not to be behind a proxy" height=120 width=120>'
     end
 end
 
@@ -49,10 +49,10 @@ local function check4Compression()
         return 'You are NOT using HTTP compression'
     end
 end
-    
+
 local function check4Lang()
     if headers['accept-language'] then
-        local lang = headers['accept-language']:sub(1,2) 
+        local lang = headers['accept-language']:sub(1,2)
         return '<img src="/img/static/'..lang..'.png" class="img-rounded" height=100 width=100 title="Your browser language is '..lang:upper()..'">'
     else
         return ''
@@ -61,7 +61,7 @@ end
 
 local function check4DNT()
     if headers['dnt'] == '1' then
-        return '<img src="/img/static/do-not-track.jpeg" class="img-rounded" title="You are requesting to be untracked" height=120 width=120>' 
+        return '<img src="/img/static/do-not-track.jpeg" class="img-rounded" title="You are requesting to be untracked" height=120 width=120>'
     else
         return '<img src="/img/static/tracking-ads.gif" class="img-rounded" title="You are NOT requesting to be untracked" height=120 width=120 >'
     end
@@ -84,7 +84,12 @@ local function resolvPTR()
 end
 
 local function getCity()
-    return  geodb:query_by_addr(remote_addr)["city"]
+    local status    = geodb:query_by_addr(remote_addr)["city"]
+    if status then
+	    return status
+    else
+	    return '[No City Entry Found]'
+    end
 end
 
 local function getCountryName()
@@ -101,10 +106,10 @@ end
 
 if headers['user-agent']:find('curl') or
    headers['user-agent']:find('Wget') then
-    -- Dump output in plain format 
+    -- Dump output in plain format
     ngx.header.content_type = 'text/plain';
 
-    -- URI resource could have a caching invalidator, use matching pattern instead 
+    -- URI resource could have a caching invalidator, use matching pattern instead
     if      uri:find('ip') then
         ngx.say(remote_addr)
 
@@ -127,7 +132,7 @@ if headers['user-agent']:find('curl') or
         ngx.say('Reverse IP: ' .. resolvPTR()..'\n')
         ngx.say('>> Is this output too verbose? You just wanted to know your IP/Place/Country/City/Reverse IP!?')
         ngx.say('$ curl where.im.org.ar/ip \n>> Or \n$ wget -q -O - where.im.org.ar/ip \n>> switch "ip" for "place", "country", "city" or "reverse" && win!')
-        ngx.say('\n/Powered by nginx :: "Where I Am?"/') 
+        ngx.say('\n/Powered by nginx :: "Where I Am?"/')
     end
 else
 
